@@ -5,7 +5,8 @@ module.exports = {
     },
     "extends": [
         "eslint:recommended",
-        "plugin:react/recommended"
+        "plugin:react/recommended",
+        "plugin:flowtype/recommended"
     ],
     "parserOptions": {
         "ecmaVersion": 9,
@@ -13,6 +14,17 @@ module.exports = {
         "ecmaFeatures": {
             "jsx": true
         }
+    },
+    "plugins": [
+        "flowtype"
+    ],
+    "settings": {
+        "react": {
+            "createClass": "createReactClass", // Regex for Component Factory to use,
+                                               // default to "createReactClass"
+            "pragma": "React",  // Pragma to use, default to "React"
+            "version": "detect"
+          }
     },
     "rules": {
         "indent": [

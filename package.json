@@ -1,15 +1,19 @@
 {
   "name": "test",
   "version": "0.0.1",
+  "main": "lib/index.js",
   "private": true,
   "scripts": {
     "web": "open dist/index.html && webpack --watch",
     "start": "node node_modules/react-native/local-cli/cli.js start",
+    "build": "babel src/ -d lib/",
+    "flow": "flow",
+    "prepublish": "npm run build",
     "android": "react-native run-android",
     "ios": "react-native run-ios"
   },
   "engine": {
-    "node": "10.10.0"
+    "node": ">=10.12.0"
   },
   "dependencies": {
     "react": "16.8.6",
@@ -22,13 +26,17 @@
     "@babel/core": "7.4.4",
     "@babel/preset-env": "7.4.4",
     "@babel/preset-react": "7.0.0",
+    "babel-cli": "^6.26.0",
     "babel-eslint": "10.0.1",
     "babel-loader": "8.0.5",
     "babel-plugin-module-resolver": "3.2.0",
+    "babel-preset-flow": "^6.23.0",
     "electron": "5.0.1",
     "electron-debug": "3.0.0",
     "eslint": "5.16.0",
+    "eslint-plugin-flowtype": "^3.10.3",
     "eslint-plugin-react": "7.13.0",
+    "flow-bin": "^0.102.0-rc",
     "metro-react-native-babel-preset": "0.54.0",
     "prop-types": "15.7.2",
     "react-devtools": "3.6.1",

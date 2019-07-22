@@ -1,31 +1,54 @@
-import PropTypes from 'prop-types';
-import React from 'react';
-import { Text } from 'react-native';
+// @flow
+import * as React from 'react';
+import * as RN from 'react-native';
+import type { Layout } from 'react-native/Libraries/Types/CoreEventTypes';
 
 const selectionStyle = {
   backgroundColor: '#202060',
   color: 'white'
 };
 
-function Letter({value = '', style = {}, selected = false, state = {}}) {
-  function updateLocation(elt) {
-    console.log(elt);
-    //TODO using react-native api
-    if(elt) state.location = elt.getBoundingClientRect();
-  }
-  const finalStyle = Object.assign({}, style, selected && selectionStyle);
-  switch(value) {
-    case '\n': return '\n';
-    default: return (<Text onLayout={updateLocation} style={finalStyle}>{value}</Text>);
+type LetterReference = {
+  getLocation?: () => Bounds,
+}
+
+type Props = {value: string, style: Style, selected: boolean}
+
+export type LetterType = {
+  value: string,
+  style: Style,
+  ref: LetterReference & Ref<HTMLElement>,
+  type: string,
+}
+
+function LetterFunction({value = '', style = {}, selected = false }: Props = {}, ref: LetterReference & Ref<HTMLElement> = { current: null }) {
+  const finalStyle = Object.assign({}, style, selected ? selectionStyle : {});
+  if(RN.Platform.OS === 'web') {
+    ref.getLocation = () => {
+      const rect = ref.current ? ref.current.getBoundingClientRect() : ({ height: 0, width: 0, x: 0, y: 0 }: Bounds);
+      return ({
+        x: rect.left!==undefined ? rect.left : rect.x,
+        y: rect.top!==undefined ? rect.top : rect.y,
+        width: rect.width,
+        height: rect.height,
+      }: Bounds);
+    };
+    switch(value) {
+      case '\n': return (<br ref={ref} style={finalStyle}/>);
+      default: return (<span ref={ref} style={finalStyle}>{value}</span>);
+    }
+  } else {
+    const location: Ref<Layout> = React.useRef(null);
+    ref.getLocation = () => location.current || ({ height: 0, width: 0, x: 0, y: 0 }: Bounds);
+    switch(value) {
+      case '\n': return '\n';
+      default: return (<RN.Text onLayout={({nativeEvent}) => location.current = nativeEvent.layout} style={finalStyle}>{value}</RN.Text>);
+    }
   }
 }
 
-Letter.propTypes = {
-  selected: PropTypes.bool,
-  state: PropTypes.object,
-  style: PropTypes.object,
-  value: PropTypes.string.isRequired
-};
+// const Letter = React.forwardRef<Props, HTMLElement>(LetterFunction);
+// Letter.displayName = 'Letter';
+// export default Letter;
 
-export default Letter;
-export const proptype = Letter.PropTypes;
+export default LetterFunction;
