@@ -14,7 +14,7 @@ const defaultStyle = {
 
 type ParagraphReference = {
   getLocation?: () => Bounds,
-  getCharacterAt?: () => number,
+  getCharacterAt?: (number, number) => number,
   getContent?: ({start: number, end: number}) => LetterType[],
 }
 
@@ -24,11 +24,11 @@ type Props = {
   selection: Selection,
 }
 
-export type ParagraphType = {
+export type ParagraphType = {|
   content: LetterType[],
   style: Style,
   ref: ParagraphReference & Ref<HTMLElement>
-}
+|}
 
 function getCharacterAt(x = 0,  y = 0, content: LetterType[]) {
   const point = { x, y };
@@ -76,6 +76,7 @@ function ParagraphFunction({content = [], style = {}, selection = { start: 0, en
     const location: Ref<Layout> = React.useRef(null);
     ref.getLocation = () => location.current || ({ height: 0, width: 0, x: 0, y: 0 }: Bounds);
     return (<RN.Text
+      ref={ref}
       onLayout={({nativeEvent}) => location.current = nativeEvent.layout}
       style={finalStyle}>
       {children}

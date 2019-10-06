@@ -14,12 +14,12 @@ type LetterReference = {
 
 type Props = {value: string, style: Style, selected: boolean}
 
-export type LetterType = {
+export type LetterType = {|
   value: string,
   style: Style,
   ref: LetterReference & Ref<HTMLElement>,
   type: string,
-}
+|}
 
 function LetterFunction({value = '', style = {}, selected = false }: Props = {}, ref: LetterReference & Ref<HTMLElement> = { current: null }) {
   const finalStyle = Object.assign({}, style, selected ? selectionStyle : {});
@@ -42,7 +42,7 @@ function LetterFunction({value = '', style = {}, selected = false }: Props = {},
     ref.getLocation = () => location.current || ({ height: 0, width: 0, x: 0, y: 0 }: Bounds);
     switch(value) {
       case '\n': return '\n';
-      default: return (<RN.Text onLayout={({nativeEvent}) => location.current = nativeEvent.layout} style={finalStyle}>{value}</RN.Text>);
+      default: return (<RN.Text ref={ref} onLayout={({nativeEvent}) => location.current = nativeEvent.layout} style={finalStyle}>{value}</RN.Text>);
     }
   }
 }

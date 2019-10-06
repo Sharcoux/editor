@@ -3,6 +3,7 @@ import * as React from 'react';
 import * as RN from 'react-native';
 import { Paragraph } from '../.';
 import type { ParagraphType } from '../Paragraph';
+// import type { PressEvent } from 'react-native/Libraries/Types/CoreEventTypes';
 
 const style = {
   display: 'flex',
@@ -23,24 +24,25 @@ const style = {
 type Props = {
   content: ParagraphType[],
   selection: Selection,
-  onKeyUp: () => void,
-  onKeyDown: () => void,
-  onTouchStart: () => void,
-  onTouchEnd: () => void,
-  onDrag: () => void,
+  onKeyUp: SyntheticEvent<HTMLDivElement, KeyboardEvent> => void,
+  onKeyDown: SyntheticEvent<HTMLDivElement, KeyboardEvent> => void,
+  onTouchStart: SyntheticEvent<HTMLDivElement, MouseEvent> => void,
+  onTouchEnd: SyntheticEvent<HTMLDivElement, MouseEvent> => void,
+  onDrag: SyntheticEvent<HTMLDivElement, MouseEvent> => void,
   onFocused: boolean => void
 }
 
 type TextPaneReference = {
   focus?: () => void,
   getParagraphAt?: (number, number) => number,
+  getCharacterAt?: (number, number) => number,
 }
 
-export type TextPaneType = {
+export type TextPaneType = {|
   content: ParagraphType[],
   selection: Selection,
   ref: TextPaneReference & Ref<HTMLElement>,
-}
+|}
 
 function getParagraphAt(x: number, y: number, content: ParagraphType[]) {
   const point = { x, y };
@@ -64,6 +66,11 @@ function TextPaneFunction({content = [], selection = {start: 0, end: 0},
 }: Props, ref: TextPaneReference & Ref<HTMLElement>) {
   ref.focus = () => ref.current ? ref.current.focus() : undefined;
   ref.getParagraphAt = (x, y) => getParagraphAt(x, y, content);
+  ref.getCharacterAt = (x, y) => {
+    const paragraph = content[getParagraphAt(x, y, content)];
+    if(paragraph.ref && paragraph.ref.getCharacterAt) return paragraph.ref.getCharacterAt(x, y);
+    return 0;
+  };
 
   let count = 0;
   const children = content.map(paragraph => {

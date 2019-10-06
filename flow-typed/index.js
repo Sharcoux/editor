@@ -11,7 +11,7 @@ declare type Ref<T> = {
 
 declare type Style = {}
 
-declare type Selection = {
+declare type Selection = {|
   start: number,
   end: number,
-}
+|}

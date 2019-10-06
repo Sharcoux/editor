@@ -2,28 +2,47 @@
 import * as React from 'react';
 import * as RN from 'react-native';
 import { TextPane } from '../.';
+import type { LetterType } from '../Letter';
+import type { ParagraphType } from '../Paragraph';
 import type { TextPaneType } from '../TextPane';
 
-type Document = {
+type Document = {|
   content: ParagraphType[],
-  defaultStyle: Style,
-  defaultParagraph: Paragraph,
-  defaultLetter: Letter
-}
+  defaultStyle?: Style,
+  defaultParagraph?: Paragraph,
+  defaultLetter?: Letter
+|}
 
-type InputStyle = {
+type InputStyle = {|
   inline: Style,
   paragraph: Style,
-}
+|}
 
-type Props = {
+type Props = {|
   onUpdate: () => void,
-}
+|}
+
+type EditorType = {|
+  setCaretPosition: number => void,
+  getCaretPosition: () => number,
+  setSelection: Selection => void,
+  getSelection: () => selection,
+  setContent: Document => void,
+  getContent: Selection => Document,
+  setInputStyle: InputStyle => void,
+  getInputStyle: () => InputStyle,
+  requestFocus: () => void,
+  isFocused: () => boolean,
+  insertContent: ParagraphType[],
+  deleteContent: Selection => void,
+  getSize: () => number,
+|}
 
 function defaultStyle(): Style {
   return {
     color: "#000",
     fontSize: '1em',
+    marginBottom: '50%',
   };
 };
 
@@ -50,27 +69,30 @@ function defaultLetter(): LetterType {
   };
 };
 
+const NEW_PARAGRAPH = {
+  ...defaultLetter(),
+  type: "newLine",
+  value: "\n\n",
+}
+
 function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
-  const [content: Paragraph[], setContent] = useState([defaultParagraph()]);
-  const [selection: Selection, setSelection] = useState({
+  /******************* Variables **********************/
+  const [content: Paragraph[], setContent] = React.useState([defaultParagraph()]);
+  const [selection: Selection, setSelection] = React.useState({
     start: 0,
     end: 0
   })
-  const [caret: number, setCaret] = useState(0);
-  const [focused: boolean, setFocused] = useState(false);
-  const [inputStyle: InputStyle, setInputStyle] = useState(defaultStyle());
+  const [caret: number, setCaret] = React.useState(0);
+  const [focused: boolean, setFocused] = React.useState(false);
+  const [inputStyle: InputStyle, setInputStyle] = React.useState(defaultStyle());
   
-  const pressed = useRef(false);
-  const shiftPressed = useRef(false);
+  const pressed = React.useRef(false);
+  const shiftPressed = React.useRef(false);
 
-  const editor = React.createRef();
-
-  function fireEvent(event) {
-    onUpdate(event);
-  }
+  function fireEvent(event) { onUpdate(event); }
 
   /** Create a new instance of paragraph at the specified index */
-  function addParagraph(index: number): void {
+  function addParagraph(index?: number): void {
     const newP = defaultParagraph();
     //Add on last position if index is not provided
     if(index===undefined) setContent([...content, newP]);
@@ -78,15 +100,14 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
     else {
       const previous = getContent({start: 0, end: index});
       const next = getContent({start: index, end: getSize()});
-      setContent(previous.concat(newP, next));
+      setContent(previous.concat(newP, ...next));
     }
-    setCaret(caret+1);
     fireEvent({type: "NEW_PARAGRAPH", index: index || getSize()-1});
   }
 
   const getSelectionSize = (): number => selection.end - selection.start;
   const isCaretVisible = (): boolean => getSelectionSize()===0 && focused;
-  function updateFocus(b: boolean): void {
+  function onFocused(b: boolean): void {
     setFocused(b);
     fireEvent({type: "FOCUS", focused: b});
   }
@@ -96,30 +117,36 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
     if(position<0) position = 0;
     const n = getSize();
     if(position>n) position = n;
+    //If wee keep the selection, the new selection is from selection.start to position
     const newSelection = {
       start: keepSelection ? Math.min(position, selection.start) : position,
-      end: keepSelection ? Math.max(position, selection.end) : position,
+      end: keepSelection ? Math.max(position, selection.start) : position,
     };
+    const oldSelection = selection;
     setSelection(newSelection);
     setCaret(position);
-    fireEvent({type: "SELECTION", ...newSelection});
+    fireEvent({type: "SELECTION", previous: oldSelection, selection: newSelection});
   }
 
   /** Update the inline style and the paragraph style with the provided elements */
   function updateInputStyle({inline = {}, paragraph = {}}: InputStyle = {}): void {
-    Object.assign(inputStyle.inline, inline);
-    Object.assign(inputStyle.paragraph, paragraph);
+    const newInputStyle = {
+      inline: {...inputStyle.inline, ...inline},
+      paragraph: {...inputStyle.paragraph, ...paragraph},
+    }
+    const oldInputStyle = inputStyle;
+    setInputStyle(newInputStyle);
     if(getSelectionSize()>0) {
       getContent(selection).forEach(p => {
         p.style = {...p.style, ...paragraph};
         p.content.forEach(c => c.style = {...c.style, inline});
       });
     }
-    fireEvent({type: "STYLE", ...selection, inline, paragraph});
+    fireEvent({type: "STYLE", previous: oldInputStyle, style: newInputStyle, selection});
   }
 
   /** Generate a document containing the selection */
-  function getContent({start = 0, end = getSize()}: ?Selection = {}): Paragraph[] {
+  function getContent({start = 0, end = getSize()}: Selection = {}): ParagraphType[] {
     let count = 0;
     return content.reduce((selected, p) => {
       if(start<=count && end>=count+p.content.length) selected.push(p);
@@ -128,6 +155,7 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
         const s = start - count;
         const e = end - count;
         const content = p.ref.getContent({start: s, end: e});
+        //We copy the paragraph attributes and update the content
         selected.push({...p, content});
       }
       count+=p.content.length+1;
@@ -142,7 +170,7 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
   }
 
   /** Get the index in the document corresponding to the provided click location */
-  function getTargetPosition(event): number{
+  function getTargetPosition(event: SyntheticEvent<HTMLDivElement, KeyboardEvent>): number {
     const {offsetX, offsetY, target} = event.nativeEvent;
     console.log(target);
     return 0;
@@ -162,13 +190,8 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
     // }
   }
 
-  /** Retrieves the paragraph at the provided coordinates */
-  function getParagraphAt(x: number,  y: number): Paragraph {
-    return editor.ref.getParagraphAt(x,y);
-  }
-
   /** Retrieves the character element at the provided coordinates */
-  function getCharacterAt(x: number, y: number): Letter {
+  function getCharacterAt(x: number, y: number): LetterType {
     return getParagraphAt(x, y).getCharacterAt(x, y);
   }
 
@@ -176,7 +199,7 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
   function getLetter(index = caret) {
     let l = 0;
     const { content : pContent } = content.find(({content : pContent }) => {
-      l+=pContent.length;
+      l+=pContent.length+1;
       return l>=index;
     });
     const i = index-(l-pContent.length);
@@ -184,7 +207,7 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
   }
 
   /** Retrieves the paragraph element at the provided index in the text */
-  function getParagraphForLetter(index = caret): Paragraph {
+  function getParagraphForLetter(index = caret): ParagraphType {
     let l=0;
     return content.find(({content : pContent }) => {
       l+=pContent.length;
@@ -308,11 +331,13 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
           getSelectionSize() ? deleteSelection() : deleteContent(caret, 1);
           break;
         case "Enter": {
+            deleteSelection();
             if(shiftKey || altKey) {
               insertElement('\n', caret, inputStyle);
             } else {
               addParagraph(caret);
             }
+            moveCaret(caret+1, false);
           }
           break;
         default: insertElement(key, caret, inputStyle); break;
@@ -340,7 +365,10 @@ function Editor({onUpdate}: Props, ref: Ref<HTMLElement>) {
     moveCaret(position, pressed.current);
   }
 
-  return <EditorView content={content} selection={selection}
+  return <TextPane
+    ref={ref}
+    content={content}
+    selection={selection}
     onKeyUp = {handleKeyUp}
     onKeyDown = {handleKeyDown}
     onTouchStart = {handleTouchStart}
